@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
-    && docker-php-ext-install gd pdo pdo_mysql zip \
+    && docker-php-ext-install gd pdo pdo_mysql zip sockets \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Instala Composer desde una imagen oficial

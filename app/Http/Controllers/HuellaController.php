@@ -88,25 +88,66 @@ class HuellaController extends Controller
         return [];
     }
 
-    public function crearHuella($idEmpleado){
+    public function crearHuella($idEmpleado)
+{
+    $host = "host.docker.internal";  // Accede al host desde Docker
+    $port = 1234;
+    $message = $idEmpleado . "\n";
 
-        
-        $host = "127.0.0.1"; 
-        $port = 1234; 
-        $message = $idEmpleado."\n";
-        $socket = socket_create(AF_INET, SOCK_STREAM, 0) or die("No se pudo crear el socket\n");
-        $result = socket_connect($socket, $host, $port) or die("No se pudo conectar con el servidor\n"); 
-        socket_write($socket, $message, strlen($message)) or die("No se pudo enviar datos al servidor\n"); 
-        $result = socket_read ($socket, 1024) or die("No se pudo leer la respuesta del servidor\n");
-        $arr1 = str_split($result);
-        $palabra = "";
-        for($i = 2; $i < count($arr1); $i++){
-            $palabra = $palabra.$arr1[$i];
-        }
-
-        
-        return [];
+    // Crear el socket
+    $socket = socket_create(AF_INET, SOCK_STREAM, 0);
+    if ($socket === false) {
+        return response()->json(['error' => 'No se pudo crear el socket'], 500);
     }
+
+    // Conectar al servidor
+    $result = socket_connect($socket, $host, $port);
+    if ($result === false) {
+        return response()->json(['error' => 'No se pudo conectar con el servidor'], 500);
+    }
+
+    // Enviar el mensaje
+    $result = socket_write($socket, $message, strlen($message));
+    if ($result === false) {
+        return response()->json(['error' => 'No se pudo enviar datos al servidor'], 500);
+    }
+
+    // Leer la respuesta
+    $result = socket_read($socket, 1024);
+    if ($result === false) {
+        return response()->json(['error' => 'No se pudo leer la respuesta del servidor'], 500);
+    }
+
+    // Cerrar el socket
+    socket_close($socket);
+
+    // Procesar la respuesta
+    $huella = trim($result);  // Elimina espacios y saltos de línea
+
+    // Buscar al empleado
+    $empleado = Empleado::find($idEmpleado);
+    if (!$empleado) {
+        return response()->json(['error' => 'Empleado no encontrado'], 404);
+    }
+
+    // Crear o actualizar la huella del empleado
+    $huellaModel = Huella::updateOrCreate(
+        ['id_empleado' => $idEmpleado],  // Condición para buscar
+        ['huella' => $huella]            // Datos para crear/actualizar
+    );
+
+    // Actualizar el campo "acceso_huella" del empleado
+    $empleado->acceso_huella = true;  // O 'Si', dependiendo del tipo de campo
+    $empleado->save();
+
+    // Devolver la respuesta
+    return response()->json([
+        'respuesta' => $huella,
+        'mensaje' => 'Huella creada/actualizada correctamente',
+        'huella' => $huellaModel,
+        'empleado' => $empleado
+    ]);
+}
 
     public function destroyForIdEmploye($idEmpleado)
     {

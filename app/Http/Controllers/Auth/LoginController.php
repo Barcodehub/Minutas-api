@@ -107,60 +107,61 @@ class LoginController extends Controller
         // return response('Datos invalidos', 400)->header('Content-Type', 'text/plain');
     }
 
-    public function loginFingerPrint(Request $request){
+    public function loginFingerPrint(Request $request)
+{
+    $host = "host.docker.internal"; 
+    $port = 1234; 
+    $message = "login"."\n";
 
-        $host = "127.0.0.1"; 
-        $port = 1234; 
-        $message = "login"."\n";
-
-
-        $socket = socket_create(AF_INET, SOCK_STREAM, 0) or die("No se pudo crear el socket\n");
-
-        
-
-        $result = socket_connect($socket, $host, $port); 
-        
-
-        socket_write($socket, $message, strlen($message)) or die("No se pudo enviar datos al servidor\n"); 
-
-        $result = socket_read ($socket, 1024) or die("No se pudo leer la respuesta del servidor\n");
-
-        $arr1 = str_split($result);
-
-
-
-        $palabra = "";
-
-        for($i = 2; $i < count($arr1); $i++){
-            $palabra = $palabra.$arr1[$i];
-        }
-
-        //return response($palabra, 400)->header('Content-Type', 'text/plain');
-
-        
-        $usuario = Empleado::where('empleado.codigo', '=', $palabra)
-                        ->select('empleado.*')
-                        ->first();
-        if ($usuario) {
-            
-                if ($usuario->activo == 'Si') {
-                    return response()->json([
-                        'id' => $usuario->id,
-                        'codigo' => $usuario->codigo,
-                        'activo' => $usuario->activo,
-                        'nombre' => $this->getNameByPerson($usuario->id_persona),
-                        'tipo' => $this->getTypeById($usuario->id_tipo_usuario),
-                        'avatar' => $this->getAvatarByPerson($usuario->id_persona),
-                    ]);
-                } else {
-                    return response('Usuario inactivo temporalmente', 400)->header('Content-Type', 'text/plain');
-                }
-            
-        } else {
-            return response('Huella No Registrada', 400)->header('Content-Type', 'text/plain');
-        }
-        
-    }
+     // Crear el socket
+     $socket = socket_create(AF_INET, SOCK_STREAM, 0);
+     if ($socket === false) {
+         return response('No se pudo crear el socket', 500)->header('Content-Type', 'text/plain');
+     }
+ 
+     // Conectar al servidor
+     $result = socket_connect($socket, $host, $port);
+     if ($result === false) {
+         return response('No se pudo conectar con el servidor', 500)->header('Content-Type', 'text/plain');
+     }
+ 
+     // Enviar el mensaje
+     $result = socket_write($socket, $message, strlen($message));
+     if ($result === false) {
+         return response('No se pudo enviar datos al servidor', 500)->header('Content-Type', 'text/plain');
+     }
+ 
+     // Leer la respuesta
+     $result = socket_read($socket, 1024);
+     if ($result === false) {
+         return response('No se pudo leer la respuesta del servidor', 500)->header('Content-Type', 'text/plain');
+     }
+ 
+     // Cerrar el socket
+     socket_close($socket);
+ 
+     // Procesar la respuesta
+     $codigo = trim($result);  // Elimina espacios y saltos de línea
+ 
+     // Buscar al empleado
+     $usuario = Empleado::where('codigo', $codigo)->first();
+     if ($usuario) {
+         if ($usuario->activo == 'Si') {
+             return response()->json([
+                 'id' => $usuario->id,
+                 'codigo' => $usuario->codigo,
+                 'activo' => $usuario->activo,
+                 'nombre' => $this->getNameByPerson($usuario->id_persona),
+                 'tipo' => $this->getTypeById($usuario->id_tipo_usuario),
+                 'avatar' => $this->getAvatarByPerson($usuario->id_persona),
+             ]);
+         } else {
+             return response('Usuario inactivo temporalmente', 400)->header('Content-Type', 'text/plain');
+         }
+     } else {
+         return response('Huella No Registrada', 400)->header('Content-Type', 'text/plain');
+     }
+ }
 
     
 
